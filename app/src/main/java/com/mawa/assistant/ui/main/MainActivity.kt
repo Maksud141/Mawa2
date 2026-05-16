@@ -235,26 +235,45 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         catch (e: Exception) { Log.e(TAG, "Create recognizer: ${e.message}") }
     }
 
+    // FIXED: 100% Manual logic without any extension functions that confuse the compiler!
     private fun attachRecognitionListener() {
         speechRecognizer?.setRecognitionListener(object : RecognitionListener {
             override fun onReadyForSpeech(params: Bundle?) { isRecognizerListening = true; runOnUiThread { waveformView.startAnimation(); updateStatus("Sunchhi... 👂") } }
             override fun onBeginningOfSpeech() = runOnUiThread { updateStatus("Bolo sunchhi... 🎙️") }
+            
             override fun onResults(results: Bundle?) {
-                isRecognizerListening = false; waveformView.stopAnimation()
-                // FIXED: receiver type mismatch here (isNullOrBlank used instead of isNotBlank)
-                val text = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull { !it.isNullOrBlank() } ?: ""
+                isRecognizerListening = false
+                waveformView.stopAnimation()
+                
+                var text = ""
+                val list = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                if (list != null) {
+                    for (item in list) {
+                        if (item != null && item.trim().isNotEmpty()) {
+                            text = item
+                            break
+                        }
+                    }
+                }
+                
                 Log.d(TAG, "STT: '$text'")
-                if (text.isBlank()) { scheduleRestart(600); return }
+                if (text.trim().isEmpty()) { scheduleRestart(600); return }
                 if (isEcho(text)) { Log.d(TAG, "Echo skipped"); scheduleRestart(800); return }
                 runOnUiThread { addUserMessage(com.mawa.assistant.utils.HindiTransliterator.transliterate(text)) }
                 transitionToState(ConversationState.PROCESSING)
                 processUserInput(text)
             }
+            
             override fun onPartialResults(partialResults: Bundle?) {
-                // FIXED: receiver type mismatch here too
-                val p = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull() ?: return
-                if (!p.isNullOrBlank()) runOnUiThread { updateStatus("$p...") }
+                val list = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                if (list != null && list.isNotEmpty()) {
+                    val p = list[0]
+                    if (p != null && p.trim().isNotEmpty()) {
+                        runOnUiThread { updateStatus("$p...") }
+                    }
+                }
             }
+            
             override fun onError(errorCode: Int) {
                 isRecognizerListening = false; waveformView.stopAnimation()
                 if (currentState == ConversationState.SPEAKING || isSpeakingOrPlaying) return
