@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="mawa_red">#FF1744</color>
+    <color name="mawa_purple">#D500F9</color>
+    <color name="mawa_dark">#050505</color>
+    <color name="mawa_card">#111111</color>
+    <color name="mawa_text">#EEEEEE</color>
+    <color name="mawa_hint">#555555</color>
+</resources>
