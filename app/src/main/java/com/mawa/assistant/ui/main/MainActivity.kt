@@ -79,7 +79,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 CallMonitorService.ACTION_CALL_ACTIVE -> {
                     isCallActive = true
                     transitionToState(ConversationState.IDLE)
-                    cancelPendingRestart(); stopRecognizer() // FIXED: Removed liveAudioManager.stop()
+                    cancelPendingRestart(); stopRecognizer()
                     updateStatus("On call... 📞")
                 }
                 CallMonitorService.ACTION_CALL_ENDED -> {
@@ -241,7 +241,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             override fun onBeginningOfSpeech() = runOnUiThread { updateStatus("Bolo sunchhi... 🎙️") }
             override fun onResults(results: Bundle?) {
                 isRecognizerListening = false; waveformView.stopAnimation()
-                val text = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull { it.isNotBlank() } ?: ""
+                // FIXED: receiver type mismatch here (isNullOrBlank used instead of isNotBlank)
+                val text = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull { !it.isNullOrBlank() } ?: ""
                 Log.d(TAG, "STT: '$text'")
                 if (text.isBlank()) { scheduleRestart(600); return }
                 if (isEcho(text)) { Log.d(TAG, "Echo skipped"); scheduleRestart(800); return }
@@ -250,8 +251,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 processUserInput(text)
             }
             override fun onPartialResults(partialResults: Bundle?) {
+                // FIXED: receiver type mismatch here too
                 val p = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull() ?: return
-                if (p.isNotBlank()) runOnUiThread { updateStatus("$p...") }
+                if (!p.isNullOrBlank()) runOnUiThread { updateStatus("$p...") }
             }
             override fun onError(errorCode: Int) {
                 isRecognizerListening = false; waveformView.stopAnimation()
@@ -342,7 +344,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun deactivateMic() {
         transitionToState(ConversationState.IDLE); isCommandExecuting = false; isSpeakingOrPlaying = false
-        stopRecognizer(); updateStatus("Tap mic to start 🎙️"); micButton.setImageResource(R.drawable.ic_mic_off) // FIXED: Removed liveAudioManager.stop()
+        stopRecognizer(); updateStatus("Tap mic to start 🎙️"); micButton.setImageResource(R.drawable.ic_mic_off)
     }
 
     private fun setupGeminiLive() {
@@ -574,6 +576,5 @@ After command, add ONE short Banglish line:
         stopRecognizer(); speechRecognizer?.destroy(); speechRecognizer = null
         tts?.shutdown(); mainHandler.removeCallbacksAndMessages(null)
         if (::liveClient.isInitialized) liveClient.disconnect()
-        // FIXED: Removed liveAudioManager.stop()
     }
 }
