@@ -79,7 +79,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 CallMonitorService.ACTION_CALL_ACTIVE -> {
                     isCallActive = true
                     transitionToState(ConversationState.IDLE)
-                    cancelPendingRestart(); stopRecognizer(); liveAudioManager.stop()
+                    cancelPendingRestart(); stopRecognizer() // FIXED: Removed liveAudioManager.stop()
                     updateStatus("On call... 📞")
                 }
                 CallMonitorService.ACTION_CALL_ENDED -> {
@@ -200,8 +200,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun speakDirectly(text: String) {
         stopRecognizer(); isSpeakingOrPlaying = true
-        // Status updates from automation should use TTS directly, NOT Gemini Brain
-        // This prevents double-speaking and AI loops
         val p = Bundle(); p.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "STATUS")
         tts?.speak(text, TextToSpeech.QUEUE_ADD, p, "STATUS")
         mainHandler.postDelayed({ isSpeakingOrPlaying = false }, (text.length * 100L).coerceIn(1000L, 5000L))
@@ -344,7 +342,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun deactivateMic() {
         transitionToState(ConversationState.IDLE); isCommandExecuting = false; isSpeakingOrPlaying = false
-        stopRecognizer(); liveAudioManager.stop(); updateStatus("Tap mic to start 🎙️"); micButton.setImageResource(R.drawable.ic_mic_off)
+        stopRecognizer(); updateStatus("Tap mic to start 🎙️"); micButton.setImageResource(R.drawable.ic_mic_off) // FIXED: Removed liveAudioManager.stop()
     }
 
     private fun setupGeminiLive() {
@@ -365,13 +363,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     runOnUiThread {
                         val trimmed = text.trim()
 
-                        // Step 1: Discard internal AI thinking completely
                         if (isInternalMessage(trimmed)) {
                             Log.d(TAG, "Discarded internal msg: ${trimmed.take(50)}")
                             return@runOnUiThread
                         }
 
-                        // Step 2: If it's a command — execute it, don't display it
                         val cmd = extractCommand(trimmed)
                         if (cmd != null) {
                             Log.d(TAG, "Executing Gemini cmd: $cmd")
@@ -386,7 +382,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                             return@runOnUiThread
                         }
 
-                        // Step 3: Normal spoken response — show + set for echo detection
                         lastBotResponse = trimmed.lowercase()
                         addBotMessage(trimmed)
                         if (trimmed.uppercase().run { contains("SLEEP MODE") || contains("SO JAO") || contains("GHUMAO") }) deactivateMic()
@@ -579,6 +574,6 @@ After command, add ONE short Banglish line:
         stopRecognizer(); speechRecognizer?.destroy(); speechRecognizer = null
         tts?.shutdown(); mainHandler.removeCallbacksAndMessages(null)
         if (::liveClient.isInitialized) liveClient.disconnect()
-        liveAudioManager.stop()
+        // FIXED: Removed liveAudioManager.stop()
     }
 }
