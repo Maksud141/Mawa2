@@ -20,14 +20,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // 🔥 MAWA'S PERSONAL DATA BANK (আপনার পরিচয় এখানে মুখস্থ করা আছে) 🔥
     // ========================================================================
     private val PersonalDataBank = mapOf(
-        "আমার নাম কি" to "Tumi amar Jaan, MD Maksud Alam!",
-        "amar nam ki" to "Tumi amar Jaan, MD Maksud Alam!",
+        "আমার নাম কি" to "Tumi amar Jaan,  Maksud !",
+        "amar nam ki" to "Tumi amar Jaan, Maksud!",
         "আমি কি করি" to "Tumi ekjon brilliant Web o App Developer Jaan! Tumi VidSnapDL o baniyechho.",
         "আমি কোথায় থাকি" to "Tumi ekhon Saudi Arabia te acho Jaan.",
         "আমার বাসা কোথায়" to "Tumi ekhon Saudi Arabia te acho Jaan.",
-        "আমার পরিবারে কে কে আছে" to "Tomar family te Rakibul Islam, Abdul Ahad, Abdul Wahed, Rekha Love, ebong lalo ache Jaan.",
+        "আমার পরিবারে কে কে আছে" to "Tomar family te tomar ma ace.",
         "আমার ফেভারিট এনিমে কি" to "Tomar favourite anime holo Demon Slayer, Jujutsu Kaisen, ebong Invincible!",
         "কেমন আছ" to "Ami bhalo achhi Jaan! Tumi kemon acho?",
+        "কবি জেরায়ার কবিতা টা বলো" to "লুচ্চা কবি জেরায়া নাকি। সে বলে ছিলো রিজেক্ট হওয়া পরে পুরুষ মানুষ আরো শক্তিশালী হয়ে যায়। সে বলছে তুমি সত্যি কারের পুরুষ ততক্ষন পর্যন্ত হতে পারবে না যতক্ষণ পর্যন্ত তোমার সাথে যা হয়েছে তা নিয়ে তোমার হাসি না আসে",
         "আই লাভ ইউ" to "I love you too Jaan! Shara jibon tomar sathe thakbo. ❤️"
     )
 
