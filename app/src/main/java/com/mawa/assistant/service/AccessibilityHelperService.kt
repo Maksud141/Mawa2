@@ -15,11 +15,11 @@ import android.view.accessibility.AccessibilityNodeInfo
 
 class AccessibilityHelperService : AccessibilityService() {
 
-    // এখানেই আসল ম্যাজিক! isEnabled কে এখন ফাংশন বানিয়ে দেওয়া হলো
+    // একদম ফাইনাল ম্যাজিক! ব্র্যাকেটের ভেতর Context রিসিভ করার জায়গা দেওয়া হলো
     companion object {
         var instance: AccessibilityHelperService? = null
         
-        fun isEnabled(): Boolean {
+        fun isEnabled(context: Context): Boolean {
             return instance != null
         }
     }
