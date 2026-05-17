@@ -14,7 +14,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // বাংলা কথা শুনেই সরাসরি কাজ করার লিস্ট
     fun isDirectCommand(text: String): Boolean {
         val lower = text.lowercase()
-        return lower.contains("open") || lower.contains("চালু") || lower.contains("অন কর") || lower.contains("খোল") || lower.contains("on kor")
+        return lower.contains("open") || lower.contains("চালু") || lower.contains("অন কর") || lower.contains("খোল") || lower.contains("on koro")
     }
 
     suspend fun processCommand(text: String) {
@@ -38,7 +38,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } else if (lower.contains("tiktok") || lower.contains("টিকটক")) {
                 openApp(context, "com.zhiliaoapp.musically", "TikTok open korchhi!")
             } else {
-                _aiResponse.postValue("Gemini API connect koro, taholei shob parbo!")
+                _aiResponse.postValue("apps ta khoje paini, taholei shob parbo!")
             }
         } catch (e: Exception) {
             _aiResponse.postValue("Kajta korte giye ektu somossa holo!")
