@@ -15,7 +15,12 @@ import android.view.accessibility.AccessibilityNodeInfo
 
 class AccessibilityHelperService : AccessibilityService() {
 
-    // MainViewModel থেকে পাঠানো সিগন্যাল রিসিভ করার রিসিভার
+    // এই হারানো অংশটুকুর জন্যই গিটহাব বিল্ড ফেইল করেছিল!
+    companion object {
+        var instance: AccessibilityHelperService? = null
+        var isEnabled: Boolean = false
+    }
+
     private val actionReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val actionType = intent?.getStringExtra("ACTION_TYPE")
@@ -33,32 +38,38 @@ class AccessibilityHelperService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
-        // ব্রডকাস্ট রিসিভার রেজিস্টার করা
+        instance = this
+        isEnabled = true
         val filter = IntentFilter("MAWA_ACCESSIBILITY_ACTION")
         registerReceiver(actionReceiver, filter, Context.RECEIVER_EXPORTED)
     }
 
+    override fun onUnbind(intent: Intent?): Boolean {
+        instance = null
+        isEnabled = false
+        return super.onUnbind(intent)
+    }
+
     override fun onDestroy() {
         super.onDestroy()
+        instance = null
+        isEnabled = false
         try {
             unregisterReceiver(actionReceiver)
         } catch (e: Exception) {}
     }
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        // এখানে কোনো কোড লাগবে না, আমরা রিসিভার দিয়ে কাজ করছি
-    }
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
 
     override fun onInterrupt() {}
 
-    // ১. অটোমেটিক স্ক্রল করার লজিক (Gesture System)
     private fun scrollScreen(isDown: Boolean) {
         val path = Path()
         if (isDown) {
-            path.moveTo(500f, 1500f) // নিচ থেকে ওপরে সোয়াইপ (Scroll Down)
+            path.moveTo(500f, 1500f)
             path.lineTo(500f, 500f)
         } else {
-            path.moveTo(500f, 500f)  // উপর থেকে নিচে সোয়াইপ (Scroll Up)
+            path.moveTo(500f, 500f)
             path.lineTo(500f, 1500f)
         }
 
@@ -67,10 +78,8 @@ class AccessibilityHelperService : AccessibilityService() {
         dispatchGesture(gestureBuilder.build(), null, null)
     }
 
-    // ২. অটোমেটিক কল রিসিভ করার লজিক (ইমু, মেসেঞ্জার বা সিম কল)
     private fun autoReceiveCall() {
         val rootNode = rootInActiveWindow ?: return
-        // বিভিন্ন অ্যাপের রিসিভ বাটনের কমন কিছু বাংলা ও ইংরেজি লেখা চেক করা
         val keywords = listOf("রিসিভ", "Accept", "Answer", "ধরো", "কল ধরো")
         
         for (keyword in keywords) {
@@ -82,7 +91,6 @@ class AccessibilityHelperService : AccessibilityService() {
         }
     }
 
-    // ৩. ইউটিউব অ্যাপের ভেতর অটো-সার্চ করার লজিক
     private fun autoYouTubeSearch(query: String) {
         Handler(Looper.getMainLooper()).postDelayed({
             val rootNode = rootInActiveWindow ?: return@postDelayed
@@ -91,7 +99,6 @@ class AccessibilityHelperService : AccessibilityService() {
             if (searchButtons.isNotEmpty()) {
                 searchButtons[0].performAction(AccessibilityNodeInfo.ACTION_CLICK)
                 
-                // সার্চ বক্স খোলার জন্য ১ সেকেন্ড ওয়েট করা
                 Handler(Looper.getMainLooper()).postDelayed({
                     val currentRoot = rootInActiveWindow ?: return@postDelayed
                     val editTexts = currentRoot.findAccessibilityNodeInfosByViewId("com.google.android.youtube:id/search_edit_text")
@@ -102,10 +109,9 @@ class AccessibilityHelperService : AccessibilityService() {
                     }
                 }, 1000)
             }
-        }, 1500) // ইউটিউব অ্যাপ ওপেন হওয়ার জন্য ১.৫ সেকেন্ড বাফার টাইম
+        }, 1500)
     }
 
-    // ৪. ফেসবুক অ্যাপের ভেতর অটো-পোস্ট করার লজিক
     private fun autoFacebookPost(text: String) {
         Handler(Looper.getMainLooper()).postDelayed({
             val rootNode = rootInActiveWindow ?: return@postDelayed
@@ -115,7 +121,6 @@ class AccessibilityHelperService : AccessibilityService() {
             if (textNodes.isNotEmpty()) {
                 textNodes[0].performAction(AccessibilityNodeInfo.ACTION_CLICK)
                 
-                // পোস্ট ক্রিয়েশন উইন্ডো আসার জন্য ১.৫ সেকেন্ড ওয়েট করা
                 Handler(Looper.getMainLooper()).postDelayed({
                     val currentRoot = rootInActiveWindow ?: return@postDelayed
                     val focusedNode = currentRoot.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
@@ -125,7 +130,6 @@ class AccessibilityHelperService : AccessibilityService() {
                         arguments.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
                         focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
                         
-                        // লেখা শেষ হলে পোস্ট বাটনে ফাইনাল ক্লিক মারা
                         Handler(Looper.getMainLooper()).postDelayed({
                             val postRoot = rootInActiveWindow ?: return@postDelayed
                             var postButtons = postRoot.findAccessibilityNodeInfosByText("POST")
