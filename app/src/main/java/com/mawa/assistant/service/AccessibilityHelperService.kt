@@ -15,10 +15,13 @@ import android.view.accessibility.AccessibilityNodeInfo
 
 class AccessibilityHelperService : AccessibilityService() {
 
-    // এই হারানো অংশটুকুর জন্যই গিটহাব বিল্ড ফেইল করেছিল!
+    // এখানেই আসল ম্যাজিক! isEnabled কে এখন ফাংশন বানিয়ে দেওয়া হলো
     companion object {
         var instance: AccessibilityHelperService? = null
-        var isEnabled: Boolean = false
+        
+        fun isEnabled(): Boolean {
+            return instance != null
+        }
     }
 
     private val actionReceiver = object : BroadcastReceiver() {
@@ -39,21 +42,18 @@ class AccessibilityHelperService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
-        isEnabled = true
         val filter = IntentFilter("MAWA_ACCESSIBILITY_ACTION")
         registerReceiver(actionReceiver, filter, Context.RECEIVER_EXPORTED)
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
         instance = null
-        isEnabled = false
         return super.onUnbind(intent)
     }
 
     override fun onDestroy() {
         super.onDestroy()
         instance = null
-        isEnabled = false
         try {
             unregisterReceiver(actionReceiver)
         } catch (e: Exception) {}
