@@ -113,12 +113,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             "WHATSAPP_CALL", "CALL ", "SMS ", "FLASHLIGHT_ON", "FLASHLIGHT_OFF",
             "VOLUME_UP", "VOLUME_DOWN", "SLEEP MODE"
         )
+        
+        // AI এর ব্রেইনের চিন্তাগুলো যেন চ্যাটে না আসে তার ফিল্টার
         private val INTERNAL_PATTERNS = listOf(
             "**Confirming", "**Clarifying", "**Processing", "**Analyzing",
             "I'm currently focused", "My immediate next step", "I need to ascertain",
             "I'm confirming", "seems ambiguous", "implicitly request",
             "intended recipient", "more specific contact", "misspelling of a contact",
-            "informal way to describe", "chain of thought"
+            "informal way to describe", "chain of thought", "**Refining", "**Acknowledge"
         )
     }
 
@@ -220,10 +222,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
         when (newState) {
             ConversationState.IDLE       -> { micButton.setImageResource(R.drawable.ic_mic_off); orbView.setPulsating(false); orbView.setSpeaking(false); orbView.setThinking(false) }
-            ConversationState.LISTENING  -> { micButton.setImageResource(R.drawable.ic_mic_on);  orbView.setPulsating(true);  orbView.setSpeaking(false); orbView.setThinking(false); updateStatus("Listening... 👂") }
-            ConversationState.PROCESSING -> { micButton.setImageResource(R.drawable.ic_mic_on);  orbView.setPulsating(false); orbView.setSpeaking(false); orbView.setThinking(true);  updateStatus("Executing... ⚡") }
-            ConversationState.SPEAKING   -> { micButton.setImageResource(R.drawable.ic_mic_on);  orbView.setPulsating(false); orbView.setSpeaking(true);  orbView.setThinking(false); updateStatus("Speaking... 💬") }
-            ConversationState.WAITING    -> { micButton.setImageResource(R.drawable.ic_mic_on);  orbView.setPulsating(false); orbView.setSpeaking(false); orbView.setThinking(true);  updateStatus("Thinking... 🤔") }
+            ConversationState.LISTENING  -> { micButton.setImageResource(R.drawable.ic_mic_on);  orbView.setPulsating(true);  orbView.setSpeaking(false); orbView.setThinking(false); updateStatus("Sunchhi... 👂") }
+            ConversationState.PROCESSING -> { micButton.setImageResource(R.drawable.ic_mic_on);  orbView.setPulsating(false); orbView.setSpeaking(false); orbView.setThinking(true);  updateStatus("Kaj korchhi... ⚡") }
+            ConversationState.SPEAKING   -> { micButton.setImageResource(R.drawable.ic_mic_on);  orbView.setPulsating(false); orbView.setSpeaking(true);  orbView.setThinking(false); updateStatus("Bolchhi... 💬") }
+            ConversationState.WAITING    -> { micButton.setImageResource(R.drawable.ic_mic_on);  orbView.setPulsating(false); orbView.setSpeaking(false); orbView.setThinking(true);  updateStatus("Bhabchhi... 🤔") }
             ConversationState.ERROR      -> { micButton.setImageResource(R.drawable.ic_mic_off); orbView.setPulsating(false); updateStatus("Error! Tap mic") }
         }
     }
@@ -237,8 +239,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun attachRecognitionListener() {
         speechRecognizer?.setRecognitionListener(object : RecognitionListener {
-            override fun onReadyForSpeech(params: Bundle?) { isRecognizerListening = true; runOnUiThread { waveformView.startAnimation(); updateStatus("Listening... 👂") } }
-            override fun onBeginningOfSpeech() = runOnUiThread { updateStatus("Hearing you... 🎙️") }
+            override fun onReadyForSpeech(params: Bundle?) { isRecognizerListening = true; runOnUiThread { waveformView.startAnimation(); updateStatus("Sunchhi... 👂") } }
+            override fun onBeginningOfSpeech() = runOnUiThread { updateStatus("Bolo sunchhi... 🎙️") }
             
             override fun onResults(results: Bundle?) {
                 isRecognizerListening = false; waveformView.stopAnimation()
@@ -255,7 +257,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 Log.d(TAG, "STT: '$text'")
                 if (text.trim().isEmpty()) { scheduleRestart(600); return }
                 if (isEcho(text)) { Log.d(TAG, "Echo skipped"); scheduleRestart(800); return }
-                runOnUiThread { addUserMessage(com.mawa.assistant.utils.HindiTransliterator.transliterate(text)) }
+                runOnUiThread { addUserMessage(text) } // সরাসরি টেক্সট বসবে, ডামি ক্লাসের দরকার নেই
                 transitionToState(ConversationState.PROCESSING)
                 processUserInput(text)
             }
@@ -316,10 +318,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         try {
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "hi-IN")
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "hi-IN")
-                putExtra(RecognizerIntent.EXTRA_SUPPORTED_LANGUAGES, arrayListOf("hi-IN","en-US","en-IN","bn-IN","ta-IN","te-IN","mr-IN","gu-IN","kn-IN","ml-IN","pa-IN","ur-IN"))
-                putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE, false)
+                // ভাষাকে পুরোপুরি বাংলায় সেট করা হলো
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "bn-BD")
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "bn-BD")
+                putExtra(RecognizerIntent.EXTRA_SUPPORTED_LANGUAGES, arrayListOf("bn-BD","bn-IN","en-US"))
+                putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE, true)
                 putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
                 putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, packageName)
                 putExtra("android.speech.extra.DICTATION_MODE", true)
@@ -376,6 +379,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     runOnUiThread {
                         val trimmed = text.trim()
 
+                        // ব্রেইনের চিন্তা ফিল্টার করা
                         if (isInternalMessage(trimmed)) {
                             Log.d(TAG, "Discarded internal msg: ${trimmed.take(50)}")
                             return@runOnUiThread
@@ -397,7 +401,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
                         lastBotResponse = trimmed.lowercase()
                         addBotMessage(trimmed)
-                        if (trimmed.uppercase().run { contains("SLEEP MODE") || contains("SO JAO") }) deactivateMic()
+                        if (trimmed.uppercase().run { contains("SLEEP MODE") || contains("GHUMAO") || contains("BONDHO") }) deactivateMic()
                     }
                 }
 
@@ -425,9 +429,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun processUserInput(text: String) {
         Log.d(TAG, "Voice: '$text'")
         val lower = text.lowercase().trim()
-        if (lower in listOf("stop", "exit", "sleep", "ruko", "band karo", "so jao", "bye mawa", "goodbye")) {
+        if (lower in listOf("stop", "exit", "sleep", "ghumao", "bondho koro", "thamo", "bye mawa", "goodbye")) {
             deactivateMic()
-            val msg = "Theek hai, so rahi hoon."
+            val msg = "Thik ache, ghumachhi."
             if (isLiveConnected) liveClient.sendTextMessage(msg) else tts?.speak(msg, TextToSpeech.QUEUE_FLUSH, null, "SLEEP")
             return
         }
@@ -483,7 +487,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val prefs = getSharedPreferences("mawa_prefs", MODE_PRIVATE)
         val name = prefs.getString("user_name", "Sir") ?: "Sir"
         val p = prefs.getString("personality_mode", "gf") ?: "gf"
-        val g = if (p == "gf") "Hey $name! Bol, kya chahiye?" else "Hello $name, ready hoon."
+        val g = if (p == "gf") "Hey Jaan! Bolo, ki korte hobe?" else "Hello $name, ami ready."
         if (isLiveConnected) liveClient.sendTextMessage("Greet: $g") else tts?.speak(g, TextToSpeech.QUEUE_FLUSH, null, "GREET")
     }
 
@@ -493,16 +497,17 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val pNum  = prefs.getString("prime_number", "") ?: ""
         val prime = if (pNum.isNotEmpty()) "Prime contact: $pName ($pNum)." else ""
         val desc  = when (personality) { "gf" -> "caring girlfriend, calls user 'Jaan'"; "professional" -> "professional assistant"; else -> "smart assistant" }
+        
+        // প্রম্পটটিকে পুরোপুরি বাংলিশে (Banglish) কথা বলার নির্দেশ দেওয়া হলো
         return """
 You are MAWA, fast Android voice assistant for $userName. Personality: $desc. $prime
 
 === STRICT RULES - NEVER BREAK ===
 1. MAX 1-2 SHORT SENTENCES. No paragraphs ever.
-2. NEVER say: "Confirming", "Clarifying", "I'm focused on", "My next step", "I need to ascertain", "The phrase seems ambiguous"
+2. NEVER say: "Confirming", "Clarifying", "I'm focused on", "My next step", "I need to ascertain", "The phrase seems ambiguous", "**Refining", "**Acknowledge"
 3. NEVER show thinking or reasoning. Just act.
 4. NEVER ask clarifying questions. Guess and act immediately.
-5. Reply in Hinglish. SHORT and natural.
-6. STT garbles names: "winod"=Vinod, "sportify"=Spotify, "watsp"=WhatsApp, "ytube"=YouTube
+5. Reply ONLY in Banglish (Bengali language written in English alphabet). SHORT and natural.
 
 === COMMANDS (output on its OWN LINE, exact format) ===
 OPEN_APP <appname>
@@ -518,15 +523,13 @@ VOLUME_DOWN
 SMS <name> <message>
 
 === EXAMPLES ===
-"Vinod ko WhatsApp karo"       -> WHATSAPP_CALL Vinod
-"Vinod ko hi bhejo whatsapp"   -> WHATSAPP_MSG Vinod Hi
-"winod ko watsp pe msg karo"   -> WHATSAPP_MSG Vinod Hi
-"Arijit Singh sunao youtube"   -> YOUTUBE_PLAY Arijit Singh
-"sportify pe kuch bajao"       -> SPOTIFY_PLAY hindi hits
-"Priya ko call"                -> CALL Priya
+"Rakib ke WhatsApp koro"       -> WHATSAPP_CALL Rakib
+"Rakib ke hi pathao whatsapp a"   -> WHATSAPP_MSG Rakib Hi
+"Arijit Singh er gaan bajao youtube a"   -> YOUTUBE_PLAY Arijit Singh
+"Priya ke call koro"                -> CALL Priya
 
-After command, add ONE short Hinglish line:
-"Vinod ko WhatsApp call kar rahi hoon!"
+After command, add ONE short Banglish line:
+"Rakib ke WhatsApp call korchhi!"
 
 [Screen: ...] context use silently. Never mention it.
         """.trimIndent()
@@ -545,8 +548,11 @@ After command, add ONE short Hinglish line:
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
-            val r = tts?.setLanguage(Locale("hi", "IN"))
-            if (r == TextToSpeech.LANG_MISSING_DATA || r == TextToSpeech.LANG_NOT_SUPPORTED) tts?.language = Locale.ENGLISH
+            // TTS কেও বাংলায় সেট করা হলো
+            val r = tts?.setLanguage(Locale("bn", "BD"))
+            if (r == TextToSpeech.LANG_MISSING_DATA || r == TextToSpeech.LANG_NOT_SUPPORTED) {
+                tts?.language = Locale("bn", "IN") // BD সাপোর্ট না করলে IN (ইন্ডিয়ান বেঙ্গলি)
+            }
             tts?.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
                 override fun onStart(id: String?) { isSpeakingOrPlaying = true }
                 override fun onDone(id: String?) { isSpeakingOrPlaying = false; if (!isCallActive && !isLiveConnected) runOnUiThread { transitionToState(ConversationState.LISTENING); triggerListenCycle() } }
@@ -557,7 +563,7 @@ After command, add ONE short Hinglish line:
 
     private fun checkDefaultAssistant() {
         val a = Settings.Secure.getString(contentResolver, "assistant")
-        if (a == null || !a.contains(packageName)) AlertDialog.Builder(this).setTitle("Set MAWA as Default Assistant").setMessage("Power button se activate karne ke liye set karo.").setPositiveButton("Set") { _, _ -> startActivity(Intent(Settings.ACTION_VOICE_INPUT_SETTINGS)) }.setNegativeButton("Later", null).show()
+        if (a == null || !a.contains(packageName)) AlertDialog.Builder(this).setTitle("Set MAWA as Default Assistant").setMessage("Power button diye activate korar jonno set koro.").setPositiveButton("Set") { _, _ -> startActivity(Intent(Settings.ACTION_VOICE_INPUT_SETTINGS)) }.setNegativeButton("Later", null).show()
     }
 
     private fun checkPermissions() {
