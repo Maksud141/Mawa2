@@ -6,16 +6,23 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Color
 import android.graphics.Path
+import android.graphics.PixelFormat
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.Gravity
+import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.widget.ImageView
 
 class AccessibilityHelperService : AccessibilityService() {
 
-    // একদম ফাইনাল ম্যাজিক! ব্র্যাকেটের ভেতর Context রিসিভ করার জায়গা দেওয়া হলো
+    private var windowManager: WindowManager? = null
+    private var floatingBubble: ImageView? = null
+
     companion object {
         var instance: AccessibilityHelperService? = null
         
@@ -44,6 +51,9 @@ class AccessibilityHelperService : AccessibilityService() {
         instance = this
         val filter = IntentFilter("MAWA_ACCESSIBILITY_ACTION")
         registerReceiver(actionReceiver, filter, Context.RECEIVER_EXPORTED)
+        
+        // 🔥 লেভেল ৪: ফ্লোটিং বাবল স্ক্রিনে নিয়ে আসার ম্যাজিক 🔥
+        createFloatingBubble()
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
@@ -57,8 +67,48 @@ class AccessibilityHelperService : AccessibilityService() {
         try {
             unregisterReceiver(actionReceiver)
         } catch (e: Exception) {}
+        
+        // অ্যাপ বা সার্ভিস বন্ধ হলে বাবলটা সরিয়ে ফেলা
+        floatingBubble?.let { windowManager?.removeView(it) }
     }
     
+    // ==========================================
+    // 🎈 ফ্লোটিং বাবল তৈরির ফাংশন 🎈
+    // ==========================================
+    private fun createFloatingBubble() {
+        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+        
+        floatingBubble = ImageView(this).apply {
+            setImageResource(android.R.drawable.ic_btn_speak_now) // মাইক আইকন
+            setBackgroundColor(Color.parseColor("#FF1493")) // মায়ার জন্য কিউট গোলাপি রঙ
+            setPadding(30, 30, 30, 30)
+            
+            // বাবলে ক্লিক করলে মায়া ওপেন হবে
+            setOnClickListener {
+                val intent = packageManager.getLaunchIntentForPackage(packageName)
+                if (intent != null) {
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    startActivity(intent)
+                }
+            }
+        }
+
+        // বাবলটাকে সবার উপরে ভাসিয়ে রাখার সেটিং (কোনো এক্সট্রা পারমিশন লাগবে না)
+        val params = WindowManager.LayoutParams(
+            150, 
+            150, 
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY, 
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            PixelFormat.TRANSLUCENT
+        )
+        
+        params.gravity = Gravity.TOP or Gravity.START 
+        params.x = 20
+        params.y = 300 // স্ক্রিনের একটু ওপরের দিকে থাকবে
+
+        windowManager?.addView(floatingBubble, params)
+    }
+
     private fun autoReceiveCall() {
         val rootNode = rootInActiveWindow ?: return
         val keywords = listOf("রিসিভ", "Accept", "Answer", "ধরো", "কল ধরো")
@@ -70,16 +120,15 @@ class AccessibilityHelperService : AccessibilityService() {
                 return
             }
         }
-    } // <-- ভাই, আপনার এই ব্র্যাকেটটা মিসিং ছিল!
+    }
 
-    // 🔥 লেভেল ১: মেসেজ পড়ে শোনানোর ম্যাজিক লজিক 🔥
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         val rootNode = rootInActiveWindow ?: return
 
+        // হোয়াটসঅ্যাপ (WhatsApp) মেসেজ স্ক্যান করা
         if (event?.eventType == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED || 
             event?.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
             
-            // হোয়াটসঅ্যাপ (WhatsApp) মেসেজ স্ক্যান করা
             if (event.packageName == "com.whatsapp") {
                 val messageList = rootNode.findAccessibilityNodeInfosByViewId("com.whatsapp:id/message_text")
                 if (messageList.isNotEmpty()) {
@@ -93,12 +142,10 @@ class AccessibilityHelperService : AccessibilityService() {
         }
     }
 
-    override fun onInterrupt() {
-        // সার্ভিস ইন্টারাপ্ট হলে আপাতত কিছু করার দরকার নেই
-    }
+    override fun onInterrupt() {}
 
     private fun scrollScreen(isDown: Boolean) {
-        val path = android.graphics.Path()
+        val path = Path()
         if (isDown) {
             path.moveTo(500f, 1500f)
             path.lineTo(500f, 500f)
@@ -107,21 +154,18 @@ class AccessibilityHelperService : AccessibilityService() {
             path.lineTo(500f, 1500f)
         }
 
-        val gestureBuilder = android.accessibilityservice.GestureDescription.Builder()
-        gestureBuilder.addStroke(android.accessibilityservice.GestureDescription.StrokeDescription(path, 0, 400))
+        val gestureBuilder = GestureDescription.Builder()
+        gestureBuilder.addStroke(GestureDescription.StrokeDescription(path, 0, 400))
         dispatchGesture(gestureBuilder.build(), null, null)
     }
 
-    // মেইন ব্রেইনে (ViewModel) ডাটা পাঠানোর হেল্পার ফাংশন
     private fun sendActionToViewModel(action: String, data: String) {
-        val intent = android.content.Intent("MAWA_ACCESSIBILITY_ACTION").apply {
+        val intent = Intent("MAWA_ACCESSIBILITY_ACTION").apply {
             putExtra("ACTION_TYPE", action)
             putExtra("TEXT_DATA", data)
         }
         sendBroadcast(intent)
     }
-
-    // <-- ভাই, এখানে আপনার একটা বাড়তি ব্র্যাকেট ছিল, সেটা আমি রিমুভ করে দিয়েছি!
 
     private fun autoYouTubeSearch(query: String) {
         Handler(Looper.getMainLooper()).postDelayed({
