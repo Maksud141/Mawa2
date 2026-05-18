@@ -196,7 +196,7 @@ lower.contains("ব্যাটারি") || lower.contains("battery") || lower
                 if (isAppOpened) return
             }
 
-            _aiResponse.postValue("Bhabchhi Jaan, ektu wait koro...!")
+            _aiResponse.postValue("Bhabchi Jaan, ektu wait koro...!")
         } catch (e: Exception) {
             _aiResponse.postValue("Kajta korte giye ektu somossa holo!")
         }
@@ -235,7 +235,7 @@ lower.contains("ব্যাটারি") || lower.contains("battery") || lower
                 // ১. জেমিনি মডেল সেটআপ
                 val generativeModel = com.google.ai.client.generativeai.GenerativeModel(
                     modelName = "gemini-1.5-flash",
-                    apiKey = "এখানে_আপনার_জেমিনি_এপিআই_কি_বসাবেন" // ⚠️ আপনার আসল Gemini API Key এখানে দিন
+                    apiKey = "AIzaSyDvyn-FqBBy0I0CysAZAdvkIhIZh8s8MXQ" // ⚠️ আপনার আসল Gemini API Key এখানে দিন
                 )
 
                 // ২. মায়ার জ্যান্ত ক্যারেক্টার সেটআপ প্রম্পট (ম্যাজিক প্রম্পট)
