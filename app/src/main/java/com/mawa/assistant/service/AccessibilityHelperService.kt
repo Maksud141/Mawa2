@@ -58,7 +58,6 @@ class AccessibilityHelperService : AccessibilityService() {
             unregisterReceiver(actionReceiver)
         } catch (e: Exception) {}
     }
-
     
     private fun autoReceiveCall() {
         val rootNode = rootInActiveWindow ?: return
@@ -71,10 +70,12 @@ class AccessibilityHelperService : AccessibilityService() {
                 return
             }
         }
-            override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+    } // <-- ভাই, আপনার এই ব্র্যাকেটটা মিসিং ছিল!
+
+    // 🔥 লেভেল ১: মেসেজ পড়ে শোনানোর ম্যাজিক লজিক 🔥
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         val rootNode = rootInActiveWindow ?: return
 
-        // 🔥 লেভেল ১: মেসেজ পড়ে শোনানোর ম্যাজিক লজিক 🔥
         if (event?.eventType == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED || 
             event?.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
             
@@ -120,7 +121,7 @@ class AccessibilityHelperService : AccessibilityService() {
         sendBroadcast(intent)
     }
 
-    }
+    // <-- ভাই, এখানে আপনার একটা বাড়তি ব্র্যাকেট ছিল, সেটা আমি রিমুভ করে দিয়েছি!
 
     private fun autoYouTubeSearch(query: String) {
         Handler(Looper.getMainLooper()).postDelayed({
