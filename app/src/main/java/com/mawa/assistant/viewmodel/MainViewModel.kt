@@ -9,6 +9,10 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.hardware.camera2.CameraManager
+import android.media.AudioManager
+import android.os.BatteryManager
+
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _aiResponse = MutableLiveData<String>()
@@ -49,6 +53,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                lower.contains("এলার্ম") || lower.contains("alarm") ||
                lower.contains("অর্ডার") || lower.contains("order") ||
                lower.contains("রিসিভ") || lower.contains("receive") || lower.contains("ধরো")
+               lower.contains("ফ্ল্যাশলাইট") || lower.contains("লাইট") || lower.contains("torch") || 
+lower.contains("সাউন্ড") || lower.contains("ভলিউম") || lower.contains("sound") || 
+lower.contains("ব্যাটারি") || lower.contains("battery") || lower.contains("চার্জ")
+
     }
 
     suspend fun processCommand(text: String) {
@@ -68,6 +76,54 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (pendingAction != null) {
                 val data = text.trim()
                 handlePendingAction(context, data)
+                return
+            }
+                        // ==========================================
+            // 🔥 লেভেল ২: হার্ডওয়্যার ও সিস্টেম কন্ট্রোল 🔥
+            // ==========================================
+
+            // ১. ফ্ল্যাশলাইট (টর্চ) অন/অফ করার লজিক
+            if (lower.contains("ফ্ল্যাশলাইট") || lower.contains("লাইট") || lower.contains("torch") || lower.contains("আলো")) {
+                val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+                try {
+                    val cameraId = cameraManager.cameraIdList[0]
+                    if (lower.contains("অন") || lower.contains("on") || lower.contains("জ্বালাও")) {
+                        cameraManager.setTorchMode(cameraId, true)
+                        _aiResponse.postValue("Jaan, flashlight on kore diyechhi! Ebar dekhte parchho?")
+                    } else if (lower.contains("অফ") || lower.contains("off") || lower.contains("বন্ধ")) {
+                        cameraManager.setTorchMode(cameraId, false)
+                        _aiResponse.postValue("Thik ache Jaan, light off kore dilam.")
+                    }
+                    return
+                } catch (e: Exception) {
+                    _aiResponse.postValue("Jaan, flash on korte ektu somossa hochhe!")
+                    return
+                }
+            }
+
+            // ২. ভলিউম (সাউন্ড) কমানো বা বাড়ানো
+            if (lower.contains("সাউন্ড") || lower.contains("ভলিউম") || lower.contains("sound") || lower.contains("volume")) {
+                val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                if (lower.contains("বাড়াও") || lower.contains("baro") || lower.contains("up")) {
+                    audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI)
+                    _aiResponse.postValue("Sound bariye dilam Jaan!")
+                } else if (lower.contains("কমাও") || lower.contains("komao") || lower.contains("down")) {
+                    audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI)
+                    _aiResponse.postValue("Thik ache Jaan, sound komiye diyechhi.")
+                }
+                return
+            }
+
+            // ৩. ব্যাটারি স্ট্যাটাস চেক করা
+            if (lower.contains("ব্যাটারি") || lower.contains("battery") || lower.contains("চার্জ")) {
+                val batteryManager = context.getSystemService(Context.BATTERY_SERVICE) as BatteryManager
+                val batteryLevel = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+                
+                if (batteryLevel < 20) {
+                    _aiResponse.postValue("Jaan, tomar phone e matro $batteryLevel percent charge ache! Taratari charge e lagao.")
+                } else {
+                    _aiResponse.postValue("Phone e ekhon $batteryLevel percent charge ache Jaan. Tension nai!")
+                }
                 return
             }
 
