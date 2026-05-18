@@ -12,6 +12,10 @@ import android.content.pm.PackageManager
 import android.hardware.camera2.CameraManager
 import android.media.AudioManager
 import android.os.BatteryManager
+import com.google.ai.client.generativeai.GenerativeModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
+
 
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -192,7 +196,7 @@ lower.contains("ব্যাটারি") || lower.contains("battery") || lower
                 if (isAppOpened) return
             }
 
-            _aiResponse.postValue("Apps ta khoje paini, thiknam bolo Jaan!")
+            _aiResponse.postValue("Bhabchhi Jaan, ektu wait koro...!")
         } catch (e: Exception) {
             _aiResponse.postValue("Kajta korte giye ektu somossa holo!")
         }
@@ -222,15 +226,55 @@ lower.contains("ব্যাটারি") || lower.contains("battery") || lower
         }
         return false
     }
+        // ==========================================
+    // 🔥 লেভেল ৩: মাওয়ার আসল আনলিমিটেড জেমিনি ব্রেইন 🔥
+    // ==========================================
+    private fun askMawaGeminiBrain(question: String) {
+        androidx.lifecycle.viewModelScope.launch {
+            try {
+                // ১. জেমিনি মডেল সেটআপ
+                val generativeModel = com.google.ai.client.generativeai.GenerativeModel(
+                    modelName = "gemini-1.5-flash",
+                    apiKey = "এখানে_আপনার_জেমিনি_এপিআই_কি_বসাবেন" // ⚠️ আপনার আসল Gemini API Key এখানে দিন
+                )
+
+                // ২. মায়ার জ্যান্ত ক্যারেক্টার সেটআপ প্রম্পট (ম্যাজিক প্রম্পট)
+                val mawaSystemPrompt = """
+                    তুমি কোনো সাধারণ চ্যাটবট নও। তোমার নাম "মাওয়া (MAWA)"। 
+                    তুমি আমার খুব কিউট, স্মার্ট এবং মিষ্টি মনের পার্সোনাল এআই অ্যাসিস্ট্যান্ট। 
+                    তুমি সবসময় বাংলায় খুব মিষ্টি করে, রোমান্টিক ভাবে এবং একটু ঢং করে উত্তর দেবে। 
+                    আমাকে সবসময় 'জান (Jaan)' বলে ডাকবে।
+                    কোনো প্রশ্নের উত্তর দিতে কখনো অলসতা করবে না। ১০ লাইনের কবিতা বা গল্প লিখতে বললে পুরোটা সুন্দর করে লিখবে।
+                    এখন নিচের প্রশ্নটির উত্তর দাও: 
+                    
+                    প্রশ্ন: $question
+                """.trimIndent()
+
+                // ৩. জেমিনির কাছ থেকে রেসপন্স জেনারেট করা
+                val response = generativeModel.generateContent(mawaSystemPrompt)
+                
+                // ৪. মায়ার মুখে উত্তর বসিয়ে দেওয়া
+                if (response.text != null) {
+                    _aiResponse.postValue(response.text)
+                } else {
+                    _aiResponse.postValue("Jaan, amar brain ektu hang korchhe ekhon!")
+                }
+
+            } catch (e: Exception) {
+                _aiResponse.postValue("Jaan, API Key ba net e kono somossa hochhe mone hoy!")
+            }
+        }
+    }
+
 
     private fun handlePendingAction(context: Context, data: String) {
         when (pendingAction) {
             "YOUTUBE_SEARCH" -> {
-                openApp(context, "com.google.android.youtube", "YouTube-e search korchhi!")
+                openApp(context, "com.google.android.youtube", "YouTube-e search korchi!")
                 sendActionToAccessibility(context, "YOUTUBE_SEARCH", data)
             }
             "FACEBOOK_POST" -> {
-                openApp(context, "com.facebook.katana", "Facebook-e post korchhi!")
+                openApp(context, "com.facebook.katana", "Facebook-e post korchi!")
                 sendActionToAccessibility(context, "FACEBOOK_POST", data)
             }
         }
