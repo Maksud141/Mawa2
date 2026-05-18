@@ -230,7 +230,7 @@ lower.contains("ব্যাটারি") || lower.contains("battery") || lower
     // 🔥 লেভেল ৩: মাওয়ার আসল আনলিমিটেড জেমিনি ব্রেইন 🔥
     // ==========================================
     private fun askMawaGeminiBrain(question: String) {
-        androidx.lifecycle.viewModelScope.launch {
+        androidx.viewModelScope.launch {
             try {
                 // ১. জেমিনি মডেল সেটআপ
                 val generativeModel = com.google.ai.client.generativeai.GenerativeModel(
