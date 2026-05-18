@@ -3,6 +3,7 @@ package com.mawa.assistant.ui.main
 import android.Manifest
 import android.content.BroadcastReceiver
 import android.content.Context
+import android.view.animation.AnimationUtils
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
@@ -568,6 +569,9 @@ After command, add ONE short Banglish line:
         micButton.setImageResource(R.drawable.ic_mic_off); updateStatus("Tap mic to start 🎙️")
         micButton.setOnClickListener { if (currentState == ConversationState.IDLE) activateMic() else deactivateMic() }
         settingsBtn.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
+        val pulseAnim = AnimationUtils.loadAnimation(this, R.anim.orb_pulse)
+orbView.startAnimation(pulseAnim)
+
     }
 
     override fun onInit(status: Int) {
