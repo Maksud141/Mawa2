@@ -59,25 +59,7 @@ class AccessibilityHelperService : AccessibilityService() {
         } catch (e: Exception) {}
     }
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
-
-    override fun onInterrupt() {}
-
-    private fun scrollScreen(isDown: Boolean) {
-        val path = Path()
-        if (isDown) {
-            path.moveTo(500f, 1500f)
-            path.lineTo(500f, 500f)
-        } else {
-            path.moveTo(500f, 500f)
-            path.lineTo(500f, 1500f)
-        }
-
-        val gestureBuilder = GestureDescription.Builder()
-        gestureBuilder.addStroke(GestureDescription.StrokeDescription(path, 0, 400))
-        dispatchGesture(gestureBuilder.build(), null, null)
-    }
-
+    
     private fun autoReceiveCall() {
         val rootNode = rootInActiveWindow ?: return
         val keywords = listOf("রিসিভ", "Accept", "Answer", "ধরো", "কল ধরো")
@@ -89,6 +71,55 @@ class AccessibilityHelperService : AccessibilityService() {
                 return
             }
         }
+            override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        val rootNode = rootInActiveWindow ?: return
+
+        // 🔥 লেভেল ১: মেসেজ পড়ে শোনানোর ম্যাজিক লজিক 🔥
+        if (event?.eventType == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED || 
+            event?.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
+            
+            // হোয়াটসঅ্যাপ (WhatsApp) মেসেজ স্ক্যান করা
+            if (event.packageName == "com.whatsapp") {
+                val messageList = rootNode.findAccessibilityNodeInfosByViewId("com.whatsapp:id/message_text")
+                if (messageList.isNotEmpty()) {
+                    val latestMessage = messageList.last().text?.toString() ?: ""
+                    
+                    if (latestMessage.isNotEmpty()) {
+                        sendActionToViewModel("READ_MESSAGE", latestMessage)
+                    }
+                }
+            }
+        }
+    }
+
+    override fun onInterrupt() {
+        // সার্ভিস ইন্টারাপ্ট হলে আপাতত কিছু করার দরকার নেই
+    }
+
+    private fun scrollScreen(isDown: Boolean) {
+        val path = android.graphics.Path()
+        if (isDown) {
+            path.moveTo(500f, 1500f)
+            path.lineTo(500f, 500f)
+        } else {
+            path.moveTo(500f, 500f)
+            path.lineTo(500f, 1500f)
+        }
+
+        val gestureBuilder = android.accessibilityservice.GestureDescription.Builder()
+        gestureBuilder.addStroke(android.accessibilityservice.GestureDescription.StrokeDescription(path, 0, 400))
+        dispatchGesture(gestureBuilder.build(), null, null)
+    }
+
+    // মেইন ব্রেইনে (ViewModel) ডাটা পাঠানোর হেল্পার ফাংশন
+    private fun sendActionToViewModel(action: String, data: String) {
+        val intent = android.content.Intent("MAWA_ACCESSIBILITY_ACTION").apply {
+            putExtra("ACTION_TYPE", action)
+            putExtra("TEXT_DATA", data)
+        }
+        sendBroadcast(intent)
+    }
+
     }
 
     private fun autoYouTubeSearch(query: String) {
