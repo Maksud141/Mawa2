@@ -45,6 +45,22 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private val viewModel: MainViewModel by viewModels()
 
+        // অ্যাক্সেসিবিলিটি সার্ভিস থেকে আসা মেসেজ ধরার রিসিভার
+    private val mawaMessageReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
+            val actionType = intent?.getStringExtra("ACTION_TYPE")
+            val textData = intent?.getStringExtra("TEXT_DATA")
+
+            if (actionType == "READ_MESSAGE" && !textData.isNullOrEmpty()) {
+                val announceText = "Jaan, WhatsApp e ekta notun message esechhe. Message ti holo: $textData"
+                
+                // মায়াকে দিয়ে কথা বলানোর লজিক (আপনার tts ইঞ্জিন ব্যবহার করে)
+                tts?.speak(announceText, android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, null)
+            }
+        }
+    }
+
+
     private lateinit var orbView: OrbAnimationView
     private lateinit var chatRecycler: RecyclerView
     private lateinit var chatAdapter: ChatAdapter
@@ -143,6 +159,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             onError   = { msg: String -> showAuthError(msg) },
             onFallback = { showPinDialog() }
         )
+                // মেসেজ রিসিভার চালু করার লজিক
+        val filter = android.content.IntentFilter("MAWA_ACCESSIBILITY_ACTION")
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(mawaMessageReceiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(mawaMessageReceiver, filter)
+        }
+
     }
 
     private fun setupPostAuth() {
@@ -584,12 +608,18 @@ After command, add ONE short Banglish line:
     private fun showPinDialog() { initViews(); createSpeechRecognizer(); tts = TextToSpeech(this, this); checkPermissions(); checkDefaultAssistant(); setupPostAuth() }
     private fun showAuthError(msg: String) = Toast.makeText(this, "Auth failed: $msg", Toast.LENGTH_LONG).show()
 
-    override fun onDestroy() {
+        override fun onDestroy() {
         super.onDestroy()
+        // আগের কল রিসিভার বন্ধ করা
         try { unregisterReceiver(callReceiver) } catch (_: Exception) {}
+        
+        // 🔥 মাওয়া মেসেজ রিসিভার বন্ধ করার লজিক (নিরাপদে ফাংশনের ভেতরে ঢুকিয়ে দেওয়া হলো) 🔥
+        try { unregisterReceiver(mawaMessageReceiver) } catch (e: Exception) {}
+        
         cancelPendingRestart(); stateTimeoutRunnable?.let { mainHandler.removeCallbacks(it) }
         stopRecognizer(); speechRecognizer?.destroy(); speechRecognizer = null
         tts?.shutdown(); mainHandler.removeCallbacksAndMessages(null)
         if (::liveClient.isInitialized) liveClient.disconnect()
     }
+
 }
