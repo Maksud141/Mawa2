@@ -61,7 +61,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
 
-    private lateinit var orbView: OrbAnimationView
+    private lateinit var orbView: ImageView
     private lateinit var chatRecycler: RecyclerView
     private lateinit var chatAdapter: ChatAdapter
     private lateinit var micButton: ImageButton
@@ -230,7 +230,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         tts?.speak(text, TextToSpeech.QUEUE_ADD, p, "STATUS")
         mainHandler.postDelayed({ isSpeakingOrPlaying = false }, (text.length * 100L).coerceIn(1000L, 5000L))
     }
-
     private fun transitionToState(newState: ConversationState) {
         Log.d(TAG, "State: $currentState -> $newState")
         stateTimeoutRunnable?.let { mainHandler.removeCallbacks(it) }
@@ -244,15 +243,18 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             }
             mainHandler.postDelayed(stateTimeoutRunnable!!, STATE_TIMEOUT_MS)
         }
+        
+        // 🔥 এখান থেকে orbView এর পুরানো কমান্ডগুলো মুছে ফেলা হয়েছে 🔥
         when (newState) {
-            ConversationState.IDLE       -> { micButton.setImageResource(R.drawable.ic_mic_off); orbView.setPulsating(false); orbView.setSpeaking(false); orbView.setThinking(false) }
-            ConversationState.LISTENING  -> { micButton.setImageResource(R.drawable.ic_mic_on);  orbView.setPulsating(true);  orbView.setSpeaking(false); orbView.setThinking(false); updateStatus("Sunchhi... 👂") }
-            ConversationState.PROCESSING -> { micButton.setImageResource(R.drawable.ic_mic_on);  orbView.setPulsating(false); orbView.setSpeaking(false); orbView.setThinking(true);  updateStatus("Kaj korchhi... ⚡") }
-            ConversationState.SPEAKING   -> { micButton.setImageResource(R.drawable.ic_mic_on);  orbView.setPulsating(false); orbView.setSpeaking(true);  orbView.setThinking(false); updateStatus("Bolchhi... 💬") }
-            ConversationState.WAITING    -> { micButton.setImageResource(R.drawable.ic_mic_on);  orbView.setPulsating(false); orbView.setSpeaking(false); orbView.setThinking(true);  updateStatus("Bhabchhi... 🤔") }
-            ConversationState.ERROR      -> { micButton.setImageResource(R.drawable.ic_mic_off); orbView.setPulsating(false); updateStatus("Error! Tap mic") }
+            ConversationState.IDLE       -> { micButton.setImageResource(R.drawable.ic_mic_off) }
+            ConversationState.LISTENING  -> { micButton.setImageResource(R.drawable.ic_mic_on); updateStatus("Sunchhi... 👂") }
+            ConversationState.PROCESSING -> { micButton.setImageResource(R.drawable.ic_mic_on); updateStatus("Kaj korchhi... ⚡") }
+            ConversationState.SPEAKING   -> { micButton.setImageResource(R.drawable.ic_mic_on); updateStatus("Bolchhi... 💬") }
+            ConversationState.WAITING    -> { micButton.setImageResource(R.drawable.ic_mic_on); updateStatus("Bhabchhi... 🤔") }
+            ConversationState.ERROR      -> { micButton.setImageResource(R.drawable.ic_mic_off); updateStatus("Error! Tap mic") }
         }
     }
+
 
     private fun createSpeechRecognizer() {
         try { speechRecognizer?.destroy(); speechRecognizer = null } catch (_: Exception) {}
@@ -369,11 +371,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun cancelPendingRestart() { restartRunnable?.let { mainHandler.removeCallbacks(it) }; restartRunnable = null }
 
-    private fun stopRecognizer() {
+        private fun stopRecognizer() {
         cancelPendingRestart(); isRecognizerListening = false
         try { speechRecognizer?.cancel() } catch (_: Exception) {}
-        waveformView.stopAnimation(); orbView.setPulsating(false)
+        waveformView.stopAnimation()
     }
+
 
     private fun activateMic() {
         if (currentState == ConversationState.IDLE) { transitionToState(ConversationState.LISTENING); updateStatus("MAWA Ready ❤️"); triggerListenCycle() }
