@@ -46,7 +46,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private val viewModel: MainViewModel by viewModels()
 
-        // অ্যাক্সেসিবিলিটি সার্ভিস থেকে আসা মেসেজ ধরার রিসিভার
+    // অ্যাক্সেসিবিলিটি সার্ভিস থেকে আসা মেসেজ ধরার রিসিভার
     private val mawaMessageReceiver = object : android.content.BroadcastReceiver() {
         override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
             val actionType = intent?.getStringExtra("ACTION_TYPE")
@@ -55,12 +55,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             if (actionType == "READ_MESSAGE" && !textData.isNullOrEmpty()) {
                 val announceText = "Jaan, WhatsApp e ekta notun message esechhe. Message ti holo: $textData"
                 
-                // মায়াকে দিয়ে কথা বলানোর লজিক (আপনার tts ইঞ্জিন ব্যবহার করে)
+                // মায়াকে দিয়ে কথা বলানোর লজিক
                 tts?.speak(announceText, android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, null)
             }
         }
     }
-
 
     private lateinit var orbView: OrbAnimationView
     private lateinit var chatRecycler: RecyclerView
@@ -160,14 +159,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             onError   = { msg: String -> showAuthError(msg) },
             onFallback = { showPinDialog() }
         )
-                // মেসেজ রিসিভার চালু করার লজিক
+        
+        // মেসেজ রিসিভার চালু করার লজিক
         val filter = android.content.IntentFilter("MAWA_ACCESSIBILITY_ACTION")
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(mawaMessageReceiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
         } else {
             registerReceiver(mawaMessageReceiver, filter)
         }
-
     }
 
     private fun setupPostAuth() {
@@ -282,7 +281,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 Log.d(TAG, "STT: '$text'")
                 if (text.trim().isEmpty()) { scheduleRestart(600); return }
                 if (isEcho(text)) { Log.d(TAG, "Echo skipped"); scheduleRestart(800); return }
-                runOnUiThread { addUserMessage(text) } // সরাসরি টেক্সট বসবে, ডামি ক্লাসের দরকার নেই
+                runOnUiThread { addUserMessage(text) }
                 transitionToState(ConversationState.PROCESSING)
                 processUserInput(text)
             }
@@ -343,7 +342,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         try {
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                // ভাষাকে পুরোপুরি বাংলায় সেট করা হলো
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE, "bn-BD")
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "bn-BD")
                 putExtra(RecognizerIntent.EXTRA_SUPPORTED_LANGUAGES, arrayListOf("bn-BD","bn-IN","en-US"))
@@ -404,7 +402,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     runOnUiThread {
                         val trimmed = text.trim()
 
-                        // ব্রেইনের চিন্তা ফিল্টার করা
                         if (isInternalMessage(trimmed)) {
                             Log.d(TAG, "Discarded internal msg: ${trimmed.take(50)}")
                             return@runOnUiThread
@@ -426,7 +423,32 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
                         lastBotResponse = trimmed.lowercase()
                         addBotMessage(trimmed)
-                        if (trimmed.uppercase().run { contains("SLEEP MODE") || contains("GHUMAO") || contains("BONDHO") }) deactivateMic()
+                        
+                        // 🔥 এখানে মায়ার রেসপন্স ট্র্যাক করে এক্সিট বা হোম অ্যাকশন হবে 🔥
+                        if (trimmed.uppercase().run { contains("SLEEP MODE") || contains("GHUMAO") || contains("BONDHO") || contains("BAHIR HOLAM") || contains("EXIT") }) {
+                            deactivateMic()
+                            val msg = "Thik ache Jaan, ami jacchi."
+                            if (isLiveConnected) liveClient.sendTextMessage(msg) else tts?.speak(msg, TextToSpeech.QUEUE_FLUSH, null, "SLEEP")
+                            
+                            // ২.৫ সেকেন্ড পরে অ্যাপ ক্লোজ হবে
+                            mainHandler.postDelayed({
+                                finishAffinity()
+                            }, 2500)
+                        } 
+                        else if (trimmed.uppercase().run { contains("GOING HOME") || contains("HOME SCREEN") || contains("HOM A") }) {
+                            deactivateMic()
+                            val msg = "Jaan, home screen e jacchi."
+                            if (isLiveConnected) liveClient.sendTextMessage(msg) else tts?.speak(msg, TextToSpeech.QUEUE_FLUSH, null, "HOME")
+                            
+                            // ২.৫ সেকেন্ড পরে হোম স্ক্রিনে যাবে
+                            mainHandler.postDelayed({
+                                val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                                    addCategory(Intent.CATEGORY_HOME)
+                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                }
+                                startActivity(homeIntent)
+                            }, 2500)
+                        }
                     }
                 }
 
@@ -454,10 +476,30 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun processUserInput(text: String) {
         Log.d(TAG, "Voice: '$text'")
         val lower = text.lowercase().trim()
-        if (lower in listOf("stop", "exit", "sleep", "ghumao", "bondho koro", "thamo", "bye mawa", "goodbye")) {
+        
+        // 🔥 এখানে ইউজারের ভয়েস শুনেও সাথে সাথে অ্যাকশন নেওয়ার সিস্টেম করে দিলাম 🔥
+        if (lower in listOf("stop", "exit", "sleep", "ghumao", "bondho koro", "thamo", "bye mawa", "goodbye", "বাহির হও", "বাহির হচ্ছো", "বন্ধ করো")) {
             deactivateMic()
             val msg = "Thik ache, ghumachhi."
             if (isLiveConnected) liveClient.sendTextMessage(msg) else tts?.speak(msg, TextToSpeech.QUEUE_FLUSH, null, "SLEEP")
+            
+            mainHandler.postDelayed({
+                finishAffinity()
+            }, 2500)
+            return
+        }
+        else if (lower in listOf("home", "home a jao", "go to home", "হোম", "হোমে যাও")) {
+            deactivateMic()
+            val msg = "Jaan, home e jacchi."
+            if (isLiveConnected) liveClient.sendTextMessage(msg) else tts?.speak(msg, TextToSpeech.QUEUE_FLUSH, null, "HOME")
+            
+            mainHandler.postDelayed({
+                val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                    addCategory(Intent.CATEGORY_HOME)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                startActivity(homeIntent)
+            }, 2500)
             return
         }
 
@@ -523,7 +565,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val prime = if (pNum.isNotEmpty()) "Prime contact: $pName ($pNum)." else ""
         val desc  = when (personality) { "gf" -> "caring girlfriend, calls user 'Jaan'"; "professional" -> "professional assistant"; else -> "smart assistant" }
         
-        // প্রম্পটটিকে পুরোপুরি বাংলিশে (Banglish) কথা বলার নির্দেশ দেওয়া হলো
         return """
 You are MAWA, fast Android voice assistant for $userName. Personality: $desc. $prime
 
@@ -570,16 +611,14 @@ After command, add ONE short Banglish line:
         micButton.setOnClickListener { if (currentState == ConversationState.IDLE) activateMic() else deactivateMic() }
         settingsBtn.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
         val pulseAnim = AnimationUtils.loadAnimation(this, R.anim.orb_pulse)
-orbView.startAnimation(pulseAnim)
-
+        orbView.startAnimation(pulseAnim)
     }
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
-            // TTS কেও বাংলায় সেট করা হলো
             val r = tts?.setLanguage(Locale("bn", "BD"))
             if (r == TextToSpeech.LANG_MISSING_DATA || r == TextToSpeech.LANG_NOT_SUPPORTED) {
-                tts?.language = Locale("bn", "IN") // BD সাপোর্ট না করলে IN (ইন্ডিয়ান বেঙ্গলি)
+                tts?.language = Locale("bn", "IN")
             }
             tts?.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
                 override fun onStart(id: String?) { isSpeakingOrPlaying = true }
@@ -612,12 +651,9 @@ orbView.startAnimation(pulseAnim)
     private fun showPinDialog() { initViews(); createSpeechRecognizer(); tts = TextToSpeech(this, this); checkPermissions(); checkDefaultAssistant(); setupPostAuth() }
     private fun showAuthError(msg: String) = Toast.makeText(this, "Auth failed: $msg", Toast.LENGTH_LONG).show()
 
-        override fun onDestroy() {
+    override fun onDestroy() {
         super.onDestroy()
-        // আগের কল রিসিভার বন্ধ করা
         try { unregisterReceiver(callReceiver) } catch (_: Exception) {}
-        
-        // 🔥 মাওয়া মেসেজ রিসিভার বন্ধ করার লজিক (নিরাপদে ফাংশনের ভেতরে ঢুকিয়ে দেওয়া হলো) 🔥
         try { unregisterReceiver(mawaMessageReceiver) } catch (e: Exception) {}
         
         cancelPendingRestart(); stateTimeoutRunnable?.let { mainHandler.removeCallbacks(it) }
